@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eye Monitor — Анти-проспалка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --panel: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.09);
+    --text: #e6edf3;
+    --muted: #8b98a9;
+    --accent: #22d3a7;
+    --danger: #ff4d6d;
+    --warn: #ffb347;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #14203a 0%, var(--bg) 55%) fixed;
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10,14,23,0.75);
+  }
+  .logo {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), #3b82f6);
+    display: grid; place-items: center; font-size: 20px;
+    box-shadow: 0 0 24px rgba(34,211,167,0.35);
+  }
+  h1 { font-size: 18px; font-weight: 800; letter-spacing: .3px; }
+  h1 small { display:block; font-size: 11px; font-weight: 400; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+  .status-pill {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); background: var(--panel);
+    transition: all .3s ease;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .status-pill.ok   .dot { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .status-pill.alert{ border-color: var(--danger); color: var(--danger); animation: pulse 1s infinite; }
+  .status-pill.alert .dot { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+  @keyframes pulse { 50% { opacity: .55; } }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 26px; display: grid; gap: 20px; }
+
+  .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 18px;
+  }
+  .card h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1.6px;
+    color: var(--muted); margin-bottom: 12px; font-weight: 600;
+  }
+
+  /* видео */
+  .video-wrap { position: relative; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 16/9; }
+  .video-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .video-offline {
+    position: absolute; inset: 0; display: none;
+    place-items: center; text-align: center; color: var(--muted);
+    background: repeating-linear-gradient(45deg, #0d1220, #0d1220 12px, #101728 12px, #101728 24px);
+    font-size: 14px; padding: 20px;
+  }
+  .no-cam .video-offline { display: grid; }
+  .alert-overlay {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    box-shadow: inset 0 0 120px 30px rgba(255,77,109,.55);
+    transition: opacity .3s;
+    display: flex; align-items: flex-start; justify-content: center;
+  }
+  .alert-overlay span {
+    margin-top: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    background: var(--danger); color: #fff; padding: 8px 18px; border-radius: 10px;
+    letter-spacing: 2px; font-size: 15px;
+  }
+  .alerting .alert-overlay { opacity: 1; animation: pulse .8s infinite; }
+
+  /* карточки метрик */
+  .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .metric { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+  .metric .label { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); }
+  .metric .value { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 700; margin-top: 6px; }
+  .metric .value.accent { color: var(--accent); }
+  .metric .value.danger { color: var(--danger); }
+  .metric .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* таймер до тревоги */
+  .timer-bar { height: 10px; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; margin-top: 12px; }
+  .timer-fill { height: 100%; width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--warn), var(--danger));
+    transition: width .2s linear; }
+
+  canvas#chart { width: 100%; height: 160px; display: block; }
+
+  footer { text-align:center; color: var(--muted); font-size: 12px; padding: 18px 0 30px; }
+  footer code { font-family:'JetBrains Mono',monospace; color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">👁</div>
+  <h1>EYE MONITOR<small>анти-проспалка · openCV + arduino</small></h1>
+  <div class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">подключение…</span></div>
+</header>
+
+<main>
+  <div class="grid">
+    <div class="card" id="videoCard">
+      <h2>Трансляция с камеры</h2>
+      <div class="video-wrap">
+        <img src="/video_feed" alt="видео" onerror="this.style.opacity=0.15">
+        <div class="video-offline">⚠️ Камера недоступна — сервер работает в демо-режиме.<br>Подключите веб-камеру и перезапустите <code>python web/server.py</code></div>
+        <div class="alert-overlay"><span>PROSIPAYASYA!!!</span></div>
+      </div>
+    </div>
+
+    <div style="display:grid; gap:14px;">
+      <div class="metric">
+        <div class="label">Статус глаз</div>
+        <div class="value accent" id="eyeState">—</div>
+        <div class="sub">глаз в кадре: <b id="eyesCount">0</b> · лиц: <b id="facesCount">0</b></div>
+        <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+        <div class="sub" id="timerText" style="margin-top:8px;"></div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="label">FPS</div><div class="value" id="fps">0</div><div class="sub">обработок/сек</div></div>
+        <div class="metric"><div class="label">Аптайм</div><div class="value" id="uptime">0:00</div><div class="sub">сессия наблюдения</div></div>
+        <div class="metric"><div class="label">Кадров всего</div><div class="value" id="frames">0</div><div class="sub">обработано</div></div>
+        <div class="metric"><div class="label">Arduino</div><div class="value" id="arduinoState" style="font-size:20px;">—</div><div class="sub" id="arduinoData">нет данных</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Бодрствование во времени <span style="float:right;color:var(--accent)">● бодрствует</span> <span style="float:right;color:var(--danger);margin-right:8px">● сон</span></h2>
+    <canvas id="chart" height="160"></canvas>
+  </div>
+</main>
+
+<footer>Eye Monitor · детекция по Haar-каскадам · данные: <code>/api/state</code> · телеметрия Arduino: <code>POST /api/arduino</code></footer>
+
+<script>
+const TIMEOUT = 10; // сек, совпадает с EYE_TIMEOUT_SEC в server.py
+const $ = id => document.getElementById(id);
+let offlineSeconds = 0;
+
+function fmtUptime(s){
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+  return (h? h+":"+String(m).padStart(2,"0") : m+":"+String(sec).padStart(2,"0"));
+}
+
+async function tick(){
+  try {
+    const r = await fetch("/api/state");
+    const st = await r.json();
+    render(st);
+    offlineSeconds = 0;
+  } catch(e){
+    if (++offlineSeconds === 3) setStatus(false, "сервер недоступен", true);
+  }
+}
+
+function setStatus(ok, text, danger){
+  const pill = $("statusPill");
+  pill.className = "status-pill " + (danger ? "alert" : (ok ? "ok" : ""));
+  $("statusText").textContent = text;
+}
+
+function render(st){
+  document.body.classList.toggle("alerting", !!st.alert);
+  $("videoCard").classList.toggle("no-cam", !st.camera_ok);
+
+  if (st.alert){ setStatus(true, "ТРЕВОГА: СПИШЬ!", true); }
+  else if (st.camera_ok){ setStatus(true, "всё ок — глаза открыты"); }
+  else { setStatus(false, "демо-режим (нет камеры)"); }
+
+  $("eyeState").textContent = st.alert ? "😴 закрыты" : "🙂 открыты";
+  $("eyeState").className = "value " + (st.alert ? "danger" : "accent");
+  $("eyesCount").textContent = st.eyes;
+  $("facesCount").textContent = st.faces;
+  $("fps").textContent = st.fps;
+  $("uptime").textContent = fmtUptime(st.uptime_sec);
+  $("frames").textContent = (st.frames_processed ?? 0).toLocaleString("ru-RU");
+
+  const pct = Math.min(100, (st.seconds_since_eyes / TIMEOUT) * 100);
+  $("timerFill").style.width = pct + "%";
+  $("timerText").textContent = st.alert
+    ? "тревога активна"
+    : `тревога через ${Math.max(0, TIMEOUT - st.seconds_since_eyes).toFixed(1)} с`;
+
+  drawChart(st.history || []);
+}
+
+function drawChart(hist){
+  const c = $("chart"), dpr = window.devicePixelRatio || 1;
+  const W = c.clientWidth, H = 160;
+  c.width = W*dpr; c.height = H*dpr;
+  const ctx = c.getContext("2d"); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  if (!hist.length) return;
+
+  // сетка
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  for (let i=1;i<4;i++){ const y=H*i/4; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  const t0 = hist[0].t, t1 = Math.max(t0+1, hist[hist.length-1].t);
+  const X = t => (t - t0) / (t1 - t0) * (W-4) + 2;
+  const Y = v => H - 10 - v * (H - 24);
+
+  // сегменты сна (красный фон)
+  ctx.fillStyle = "rgba(255,77,109,0.12)";
+  for (let i=1;i<hist.length;i++){
+    if (hist[i].alert){ ctx.fillRect(X(hist[i-1].t), 0, X(hist[i].t)-X(hist[i-1].t)+1, H); }
+  }
+
+  // линия бодрствования
+  ctx.beginPath();
+  hist.forEach((p,i)=> i? ctx.lineTo(X(p.t), Y(p.awake)) : ctx.moveTo(X(p.t), Y(p.awake)));
+  ctx.strokeStyle = "#22d3a7"; ctx.lineWidth = 2; ctx.lineJoin="round"; ctx.stroke();
+
+  // точки глаз (второй ряд, масштаб 0..2)
+  ctx.beginPath();
+  hist.forEach((p,i)=>{ const y = Y(Math.min(1, p.eyes/2)*0.6); i? ctx.lineTo(X(p.t),y):ctx.moveTo(X(p.t),y); });
+  ctx.strokeStyle = "rgba(59,130,246,0.7)"; ctx.setLineDash([4,4]); ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+
+  // подписи времени
+  ctx.fillStyle = "rgba(139,152,169,0.8)"; ctx.font = "10px JetBrains Mono, monospace";
+  ctx.fillText(fmtUptime(t0), 2, H-1);
+  ctx.textAlign = "right"; ctx.fillText(fmtUptime(t1), W-2, H-1); ctx.textAlign="left";
+}
+
+setInterval(tick, 500); tick();
+
+// Arduino-панель
+setInterval(async ()=>{
+  try{
+    const a = await (await fetch("/api/arduino")).json();
+    $("arduinoState").textContent = a.connected ? "🟢 на связи" : "⚪ не подключён";
+    $("arduinoState").style.color = a.connected ? "var(--accent)" : "var(--muted)";
+    $("arduinoData").textContent = a.data && Object.keys(a.data).length
+      ? JSON.stringify(a.data) : "отправляйте JSON на POST /api/arduino";
+  }catch(e){}
+}, 2000);
+</script>
+</body>
+</html>
