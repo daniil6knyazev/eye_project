@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>👁️ Анти-проспалка — Дашборд</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --card:#121a2b; --card2:#0e1524; --border:#1e2a45;
+    --text:#dbe6ff; --muted:#7c8db0; --accent:#4da3ff; --ok:#2ecc71; --bad:#ff4757;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1200px 600px at 70% -10%, #16233f 0%, var(--bg) 55%);
+       color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;
+         border-bottom:1px solid var(--border)}
+  header h1{font-size:20px;letter-spacing:.5px}
+  header h1 span{color:var(--accent)}
+  .badge{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;
+         background:#132038;border:1px solid var(--border);color:var(--muted)}
+  .badge.on{color:var(--ok);border-color:var(--ok);box-shadow:0 0 12px #2ecc7133}
+  main{display:grid;grid-template-columns:1fr 380px;gap:20px;padding:20px 28px;max-width:1500px;margin:0 auto}
+  @media(max-width:1100px){main{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--border);
+        border-radius:16px;padding:18px;box-shadow:0 8px 24px #00000040}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px}
+  .video-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9}
+  .video-wrap img{width:100%;height:100%;object-fit:contain;display:block}
+  .video-wrap.alarm{outline:4px solid var(--bad);animation:blink .5s infinite alternate}
+  @keyframes blink{from{box-shadow:0 0 8px var(--bad)}to{box-shadow:0 0 40px var(--bad)}}
+  .alarm-banner{position:absolute;top:0;left:0;right:0;text-align:center;font-weight:800;font-size:26px;
+     letter-spacing:3px;color:#fff;background:rgba(255,71,87,.85);padding:8px;display:none}
+  .video-wrap.alarm .alarm-banner{display:block;animation:shake .3s infinite}
+  @keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+  .no-cam{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+          color:var(--muted);font-size:15px;text-align:center;padding:20px}
+  .status-big{font-size:44px;font-weight:800;text-align:center;padding:18px 0 6px}
+  .status-big.ok{color:var(--ok)} .status-big.bad{color:var(--bad)}
+  .sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:14px}
+  .bar{height:14px;border-radius:7px;background:#0a1120;border:1px solid var(--border);overflow:hidden}
+  .bar>i{display:block;height:100%;width:0%;border-radius:7px;
+         background:linear-gradient(90deg,var(--accent),#7bd88f);transition:width .2s linear}
+  .bar.warn>i{background:linear-gradient(90deg,#ffb347,var(--bad))}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .metric{background:#0a1120;border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+  .metric .v{font-size:24px;font-weight:700}
+  .metric .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+  canvas{width:100%;height:140px;display:block;background:#0a1120;border-radius:12px;border:1px solid var(--border)}
+  .side{display:flex;flex-direction:column;gap:20px}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;
+       border-bottom:1px dashed var(--border);font-size:14px}
+  .row:last-child{border-bottom:none}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;background:var(--muted)}
+  .dot.g{background:var(--ok);box-shadow:0 0 8px var(--ok)} .dot.r{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>👁️ АНТИ-ПРОСПАЛКА <span>// live dashboard</span></h1>
+  <div style="display:flex;gap:10px">
+    <div class="badge" id="bArduino">Arduino: —</div>
+    <div class="badge" id="bCam">Камера: —</div>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Видео с камеры</h2>
+    <div class="video-wrap" id="videoWrap">
+      <img id="feed" src="/video_feed" alt="" onerror="this.style.display='none'">
+      <div class="no-cam" id="noCam" style="display:none">Нет картинки с камеры.<br>Проверь, что web_server.py запущен и камера не занята другим приложением.</div>
+      <div class="alarm-banner">⚡ PROSIPAYASYA!!! ⚡</div>
+    </div>
+
+    <div class="grid2">
+      <div class="metric"><div class="v" id="mFps">—</div><div class="l">FPS обработки</div></div>
+      <div class="metric"><div class="v" id="mFaces">0</div><div class="l">Лиц в кадре</div></div>
+      <div class="metric"><div class="v" id="mEyes">0</div><div class="l">Глаз найдено</div></div>
+      <div class="metric"><div class="v" id="mFrames">0</div><div class="l">Кадров обработано</div></div>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <h2>Статус глаз</h2>
+      <div class="status-big ok" id="bigStatus">😊 НЕ СПИШЬ</div>
+      <div class="sub" id="subStatus">глаза видны</div>
+      <div class="bar" id="timerBar"><i id="timerFill"></i></div>
+      <div class="sub" style="margin-top:10px" id="timerText">тревога через 10.0 c</div>
+    </div>
+
+    <div class="card">
+      <h2>Бодрствование (последние ~2 мин)</h2>
+      <canvas id="chart" width="640" height="280"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Система</h2>
+      <div class="row"><span><i class="dot" id="dCam"></i>Камера</span><b id="tCam">—</b></div>
+      <div class="row"><span><i class="dot" id="dArdu"></i>Arduino (COM-порт)</span><b id="tArdu">—</b></div>
+      <div class="row"><span><i class="dot" id="dAlarm"></i>Сигнал тревоги</span><b id="tAlarm">—</b></div>
+      <div class="row"><span>Порог сна</span><b id="tTimeout">10 с</b></div>
+    </div>
+  </div>
+</main>
+<footer>open-cv haar cascades · flask · localhost:<span id="prt"></span></footer>
+
+<script>
+document.getElementById('prt').textContent = location.port || '80';
+const hist = [];           // {t, awake:0..1}
+const $ = id => document.getElementById(id);
+
+function drawChart(){
+  const c = $('chart'), ctx = c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+  // сетка
+  ctx.strokeStyle = '#1e2a45'; ctx.lineWidth = 1;
+  for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(0,c.height*i/4);ctx.lineTo(c.width,c.height*i/4);ctx.stroke();}
+  if(hist.length<2) return;
+  const t1 = hist[hist.length-1].t, t0 = t1 - 120;
+  const X = t => (t - t0)/120 * c.width;
+  // красные зоны (не бодрствуем)
+  ctx.fillStyle = 'rgba(255,71,87,.25)';
+  for(let i=1;i<hist.length;i++){
+    if(!hist[i].awake && hist[i].t>=t0){
+      ctx.fillRect(X(hist[i-1].t), 0, Math.max(2,X(hist[i].t)-X(hist[i-1].t)), c.height);
+    }
+  }
+  // линия "секунды без глаз"
+  ctx.strokeStyle = '#4da3ff'; ctx.lineWidth = 2; ctx.beginPath();
+  let started=false;
+  for(const p of hist){
+    if(p.t<t0) continue;
+    const y = c.height - Math.min(1, p.since/10)*c.height;
+    started ? ctx.lineTo(X(p.t),y) : (ctx.moveTo(X(p.t),y), started=true);
+  }
+  ctx.stroke();
+}
+
+async function tick(){
+  try{
+    const r = await fetch('/api/state'); const s = await r.json();
+    // статус
+    const awake = !s.alarm;
+    $('bigStatus').textContent = awake ? '😊 НЕ СПИШЬ' : '😴 СПИШЬ?!';
+    $('bigStatus').className = 'status-big ' + (awake?'ok':'bad');
+    $('subStatus').textContent = s.eyes_detected ? 'глаза видны' :
+      ('глаза не видно: ' + s.time_without_eyes.toFixed(1) + ' с');
+    const frac = Math.min(1, s.time_without_eyes / s.timeout_sec);
+    $('timerFill').style.width = (frac*100).toFixed(0)+'%';
+    $('timerBar').className = 'bar' + (frac>0.6?' warn':'');
+    $('timerText').textContent = awake ? ('тревога через ' + Math.max(0,s.timeout_sec-s.time_without_eyes).toFixed(1) + ' c')
+                                       : ('⚠️ ТРЕВОГА АКТИВНА (' + s.time_without_eyes.toFixed(0) + ' с без глаз)');
+    $('videoWrap').className = 'video-wrap' + (s.alarm?' alarm':'');
+    // метрики
+    $('mFps').textContent = s.fps || '—';
+    $('mFaces').textContent = s.faces.length;
+    $('mEyes').textContent = s.eyes.length;
+    $('mFrames').textContent = s.frames.toLocaleString('ru');
+    // система
+    $('bCam').textContent = 'Камера: ' + (s.camera_ok?'OK':'нет');
+    $('bCam').className = 'badge' + (s.camera_ok?' on':'');
+    $('noCam').style.display = s.camera_ok?'none':'flex';
+    $('feed').style.display = s.camera_ok?'block':'none';
+    $('dCam').className = 'dot ' + (s.camera_ok?'g':'r'); $('tCam').textContent = s.camera_ok?'работает':'ошибка';
+    $('dArdu').className = 'dot ' + (s.arduino_connected?'g':'r'); $('tArdu').textContent = s.arduino_connected?'подключен':'не подключен';
+    $('dAlarm').className = 'dot ' + (s.alarm?'r':'g'); $('tAlarm').textContent = s.alarm?'ON 🚨':'off';
+    $('bArduino').textContent = 'Arduino: ' + (s.arduino_connected?(s.arduino_alarm?'ALARM':'online'):'—');
+    $('bArduino').className = 'badge' + (s.arduino_connected && !s.arduino_alarm?' on':'');
+    $('tTimeout').textContent = s.timeout_sec + ' с';
+    hist.push({t: Date.now()/1000, awake, since: s.time_without_eyes});
+    while(hist.length>600) hist.shift();
+    drawChart();
+  }catch(e){ /* сервер ещё не поднялся */ }
+}
+setInterval(tick, 250);
+</script>
+</body>
+</html>
